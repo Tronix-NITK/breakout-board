@@ -6,14 +6,10 @@ from math import ceil
 
 
 class Driver(DriverBase):
-    def __init__(self, resolution, port, baud_rate, debug_file=None):
-        if debug_file is None:
-            self._serial_dev = serial.Serial()
-            self._serial_dev.port = port
-            self._serial_dev.baudrate = baud_rate
-        else:
-            url = "spy://%s?file=%s" % (port, debug_file)
-            self._serial_dev = serial.serial_for_url(url, baudrate=baud_rate, do_not_open=True)
+    def __init__(self, resolution, port, baud_rate):
+        self._serial_dev = serial.Serial()
+        self._serial_dev.port = port
+        self._serial_dev.baudrate = baud_rate
         _, h = resolution
         self._reduction_matrix = np.array([2 ** i for i in range(h)])
         self._col_len = 1
@@ -27,6 +23,6 @@ class Driver(DriverBase):
 
     def push_frame(self, frame):
         for col, val in enumerate(self._reduction_matrix.dot(frame)):
-            data = col.to_bytes(self._col_len, "big") + col.to_bytes(self._val_len, "big")
-            print(data)
+            data = col.to_bytes(self._col_len, "big") + int(val).to_bytes(self._val_len, "big")
             self._serial_dev.write(data)
+            self._serial_dev.read(1)
