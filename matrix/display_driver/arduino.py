@@ -11,7 +11,7 @@ class Driver(DriverBase):
         self._serial_dev.port = port
         self._serial_dev.baudrate = baud_rate
         _, h = resolution
-        self._reduction_matrix = np.array([2 ** i for i in range(h)])
+        self._reduction_matrix = np.array(list(reversed([2 ** i for i in range(h)])))
         self._col_len = 1
         self._val_len = ceil(h / 8)
 

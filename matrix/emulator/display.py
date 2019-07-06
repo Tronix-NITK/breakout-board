@@ -3,15 +3,25 @@ import pty
 import cv2
 from threading import Thread
 import serial
+import numpy as np
+from math import ceil
+
+
+def _bin_array(val, m):
+    return np.array(list(np.binary_repr(val, m))).astype(np.int8)
 
 
 class Display:
-    def __init__(self, name):
+    def __init__(self, name, resolution, scale=1):
         self.name = name
+        self.resolution = resolution
+        self.scale = scale
         self._thread = None
         self._run_flag = False
         self._master = None
         self.port = None
+        self._col_len = 1
+        self._val_len = ceil(resolution[1] / 8)
 
     def start(self):
         self._master, slave = pty.openpty()
@@ -26,12 +36,20 @@ class Display:
         ser.write(b"close")
         ser.close()
         self._thread.join()
-        # cv2.destroyWindow(self.name)
+        cv2.destroyWindow(self.name)
 
     def _run(self):
+        w, h = self.resolution
+        ws, hs = w * self.scale, h * self.scale
+        frame = np.zeros((h, w))
         while self._run_flag:
             data = os.read(self._master, 1000)
             if not self._run_flag:
                 break
+            col = int.from_bytes(data[:self._col_len], byteorder='big')
+            val = int.from_bytes(data[self._col_len:], byteorder='big')
+            frame[:, col] = _bin_array(val, h)
+            if col == w - 1:
+                cv2.imshow(self.name, cv2.resize(frame, (hs, ws)))
+                cv2.waitKey(1)
             os.write(self._master, b"\0")
-            print(list(map(int, data)))
