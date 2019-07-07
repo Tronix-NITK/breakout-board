@@ -40,7 +40,6 @@ class Display:
 
     def _run(self):
         w, h = self.resolution
-        ws, hs = w * self.scale, h * self.scale
         frame = np.zeros((h, w))
         while self._run_flag:
             data = os.read(self._master, 1000)
@@ -50,6 +49,6 @@ class Display:
             val = int.from_bytes(data[self._col_len:], byteorder='big')
             frame[:, col] = _bin_array(val, h)
             if col == w - 1:
-                cv2.imshow(self.name, cv2.resize(frame, (hs, ws)))
+                cv2.imshow(self.name, cv2.resize(frame, (0, 0), fx=self.scale, fy=self.scale))
                 cv2.waitKey(1)
             os.write(self._master, b"\0")

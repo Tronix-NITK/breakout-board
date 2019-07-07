@@ -1,4 +1,4 @@
-from matrix.display_driver.driver import Driver as DriverBase
+from .driver import Driver as DriverBase
 
 import serial
 import numpy as np
