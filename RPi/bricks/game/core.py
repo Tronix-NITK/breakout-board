@@ -41,6 +41,9 @@ class Brick(Re.Rect.LogicNode, Pe.StaticNode.LogicNode):
         self.x, self.y = xy
         self.w, self.h = wh
 
+    def get_hitbox(self):
+        return self.x, self.y, self.w, self.h
+
     def get_xy(self):
         return self.x, self.y
 
@@ -56,6 +59,9 @@ class Ball(Re.SolidRect.LogicNode, Pe.DynamicNode.LogicNode):
         super().__init__()
         self.x, self.y = xy
         self.w, self.h = wh
+
+    def get_hitbox(self):
+        return self.x, self.y, self.w, self.h
 
     def get_xy(self):
         return self.x, self.y
@@ -73,18 +79,27 @@ class Ball(Re.SolidRect.LogicNode, Pe.DynamicNode.LogicNode):
 def main():
     re = Re.RenderEngine((150, 150), (500, 500))
     pe = Pe.PhyEngine()
-    b1 = Brick((25, 25), (50, 50))
-    re.link_node(b1)
-    pe.link_node(b1)
-    b2 = Ball((100, 75), (10, 10))
-    re.link_node(b2)
-    pe.link_node(b2)
+    bricks = [
+        Brick((10, 10), (10, 130)),
+        Brick((10, 10), (130, 10)),
+        Brick((130, 10), (10, 130)),
+        Brick((10, 130), (130, 10)),
+        Brick((30, 43), (10, 20)),
+        Brick((63, 93), (30, 20)),
+        Brick((75, 40), (50, 5)),
+    ]
+    for b in bricks:
+        re.link_node(b)
+        pe.link_node(b)
+    b = Ball((20, 20), (10, 10))
+    re.link_node(b)
+    pe.link_node(b)
     run = True
-    pe.apply_boost(b2, (-2, -2))
+    pe.apply_boost(b, (-1, 1))
     while run:
         pe.tick()
         cv2.imshow("win", re.tick())
-        run = (cv2.waitKey(250) != ord("q"))
+        run = (cv2.waitKey(10) != ord("q"))
 
 
 if __name__ == '__main__':

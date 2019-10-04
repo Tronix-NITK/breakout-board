@@ -24,6 +24,10 @@ class PhyEngineNode(abc.ABC):
             pass
 
         @abc.abstractmethod
+        def get_hitbox(self):
+            pass
+
+        @abc.abstractmethod
         def on_hit(self, node: PhyEngineNode.LogicNode):
             pass
 
@@ -116,9 +120,122 @@ class PhyEngine:
                 node.pe_px, node.pe_py = node.pe_x, node.pe_y
                 node.pe_x += node.vx
                 node.pe_y += node.vy
+                hit_comp = self.check_col(node)
+                if any(hit_comp):
+                    mx, my = 1, 1
+                    if hit_comp[1] or hit_comp[3]:
+                        mx = -1
+                    elif hit_comp[0] or hit_comp[2]:
+                        my = -1
+                    node.pe_x -= node.vx
+                    node.pe_y -= node.vy
+                    node.vx = mx * node.vx
+                    node.vy = my * node.vy
+                    node.pe_x += node.vx
+                    node.pe_y += node.vy
                 node.sync()
 
     def apply_boost(self, logic_node: DynamicNode.LogicNode, v: Tuple[int, int]):
         pe_node = self.dynamic_map.get(logic_node.pe_id)
         assert pe_node is not None, "Logical node has no mapping"
         pe_node.vx, pe_node.vy = v
+
+    def check_col(self, d_node: DynamicNode):
+        _, _, w, h = d_node.logic_node.get_hitbox()
+        x, y = d_node.pe_x, d_node.pe_y
+        px, py = d_node.pe_px, d_node.pe_py
+        d_node_hb = x, y, w, h
+        lines = [
+            LineSegment((x, y), (px, py)),
+            LineSegment((x + w, y), (px + w, py)),
+            LineSegment((x + w, y + h), (px + w, py + h)),
+            LineSegment((x, y + h), (px, py + h)),
+        ]
+        impact = [0, 0, 0, 0]
+        for s_node in self.static_nodes:
+            hit, td, ts = _rect_overlapping(d_node_hb, s_node.logic_node.get_hitbox())
+            if not hit:
+                continue
+            segments = _rect_to_line_segments(s_node.logic_node.get_hitbox())
+            if LineSegment.intersecting(lines[0], segments[1]):
+                impact[3] = 1
+            elif LineSegment.intersecting(lines[0], segments[2]):
+                impact[0] = 1
+            elif LineSegment.intersecting(lines[1], segments[3]):
+                impact[1] = 1
+            elif LineSegment.intersecting(lines[1], segments[2]):
+                impact[0] = 1
+            elif LineSegment.intersecting(lines[2], segments[0]):
+                impact[2] = 1
+            elif LineSegment.intersecting(lines[2], segments[3]):
+                impact[1] = 1
+            elif LineSegment.intersecting(lines[3], segments[0]):
+                impact[2] = 1
+            elif LineSegment.intersecting(lines[3], segments[1]):
+                impact[3] = 1
+            else:
+                continue
+        return tuple(impact)
+
+
+def _rect_overlapping(r1: Tuple[int, int, int, int], r2: Tuple[int, int, int, int]):
+    t1 = tuple(int(_point_in_rect(pt, r2)) for pt in _rect_to_points(r1))
+    t2 = tuple(int(_point_in_rect(pt, r1)) for pt in _rect_to_points(r2))
+    return (any(t1) or any(t2)), t1, t2
+
+
+def _rect_to_points(r: Tuple[int, int, int, int]):
+    x, y, w, h = r
+    return (x, y), (x + w, y), (x + w, y + h), (x, y + h)
+
+
+def _point_in_rect(pt: Tuple[int, int], r: Tuple[int, int, int, int]):
+    px, py = pt
+    x, y, w, h = r
+    return x <= px <= (x + w) and y <= py <= (y + h)
+
+
+class LineSegment:
+    def __init__(self, p1, p2):
+        self.x1, self.y1 = p1
+        self.x2, self.y2 = p2
+        self.dx = self.x2 - self.x1
+        self.dy = self.y2 - self.y1
+
+    # def x(self, y: int) -> int:
+    #     if self.dx == 0 and self.dy == 0:
+    #         return self.x1 if y == self.y1 else None
+    #     if self.dx == 0:
+    #         return self.x1
+    #     if self.dy == 0:
+    #         return None
+    #     return int(self.x1 + (y - self.y1) * self.dx / self.dy)
+    #
+    # def y(self, x: int) -> int:
+    #     if self.dx == 0 and self.dy == 0:
+    #         return self.y1 if x == self.x1 else None
+    #     if self.dy == 0:
+    #         return self.y1
+    #     if self.dx == 0:
+    #         return None
+    #     return int(self.y1 + (x - self.x1) * self.dy / self.dx)
+
+    @staticmethod
+    def intersecting(l1: LineSegment, l2: LineSegment) -> bool:
+        x1, y1, x2, y2 = l1.x1, l1.y1, l1.x2, l1.y2
+        x3, y3, x4, y4 = l2.x1, l2.y1, l2.x2, l2.y2
+        n_ta = (y3 - y4) * (x1 - x3) + (x4 - x3) * (y1 - y3)
+        d_ta = (x4 - x3) * (y1 - y2) - (x1 - x2) * (y4 - y3)
+        n_tb = (y1 - y2) * (x1 - x3) + (x2 - x1) * (y1 - y3)
+        d_tb = (x4 - x3) * (y1 - y2) - (x1 - x2) * (y4 - y3)
+        return 0 <= n_ta <= d_ta and 0 <= n_tb <= d_tb
+
+
+def _rect_to_line_segments(rect: Tuple[int, int, int, int]):
+    x, y, w, h = rect
+    return (
+        LineSegment((x, y), (x + w, y)),
+        LineSegment((x + w, y), (x + w, y + h)),
+        LineSegment((x + w, y + h), (x, y + h)),
+        LineSegment((x, y + h), (x, y)),
+    )
