@@ -63,7 +63,7 @@ class DynamicNode(PhyEngineNode):
 
     def sync(self):
         if (self.pe_x, self.pe_y) != self.logic_node.get_hitbox()[:2]:
-            self.logic_node.on_move((self.pe_x, self.pe_y))
+            self.logic_node.on_move((self.vx, self.vy))
 
 
 class PhyEngine:
@@ -71,19 +71,27 @@ class PhyEngine:
         self.id_store = IDStore()
         self.static_nodes: List[StaticNode] = []
         self.dynamic_nodes: List[DynamicNode] = []
-        self.dynamic_map: Dict[int, DynamicNode] = {}
+        self.map: Dict[int, PhyEngineNode] = {}
 
     def link_node(self, logic_node: PhyEngineNode.LogicNode):
         pe_node = logic_node.factory_pe_node()
         pe_id = pe_node.pe_id = logic_node.pe_id = self.id_store.gen()
         logic_node.pe_node = pe_node
         pe_node.logic_node = logic_node
+        self.map[pe_id] = pe_node
         if isinstance(pe_node, StaticNode):
             self.static_nodes.append(pe_node)
         elif isinstance(pe_node, DynamicNode):
             self.dynamic_nodes.append(pe_node)
-            self.dynamic_map[pe_id] = pe_node
             pe_node.on_link()
+
+    def unlink_node(self, logic_node: PhyEngineNode.LogicNode):
+        pe_id = logic_node.pe_id
+        pe_node = self.map.pop(pe_id)
+        if isinstance(pe_node, StaticNode):
+            self.static_nodes.remove(pe_node)
+        elif isinstance(pe_node, DynamicNode):
+            self.dynamic_nodes.remove(pe_node)
 
     def tick(self):
         for node in self.dynamic_nodes:
@@ -107,7 +115,7 @@ class PhyEngine:
                 node.sync()
 
     def apply_boost(self, logic_node: DynamicNode.LogicNode, v: Tuple[int, int]):
-        pe_node = self.dynamic_map.get(logic_node.pe_id)
+        pe_node = self.map.get(logic_node.pe_id)
         assert pe_node is not None, "Logical node has no mapping"
         pe_node.vx, pe_node.vy = v
 
@@ -146,6 +154,7 @@ class PhyEngine:
                 impact[3] = 1
             else:
                 continue
+            s_node.logic_node.on_hit(d_node.logic_node)
         return tuple(impact)
 
 
