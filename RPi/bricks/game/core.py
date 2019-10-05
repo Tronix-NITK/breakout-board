@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 from typing import Tuple
-from random import randint
+from random import randint, sample
 
 from RPi.bricks.game.PhyEngine import PhyEngineNode
 import RPi.bricks.game.RenderEngine as Re
@@ -49,8 +49,9 @@ class Boundary(Pe.StaticNode.LogicNode):
         pass
 
 
-class Brick(Re.Rect.LogicNode, Pe.StaticNode.LogicNode):
+class Brick(Re.SolidRect.LogicNode, Pe.StaticNode.LogicNode):
     destroy = None
+    border = 2
 
     def __init__(self, xy, wh):
         super().__init__()
@@ -61,10 +62,10 @@ class Brick(Re.Rect.LogicNode, Pe.StaticNode.LogicNode):
         return self.x, self.y, self.w, self.h
 
     def get_corner(self):
-        return self.x, self.y
+        return self.x + self.border, self.y + self.border
 
     def get_shape(self):
-        return self.w, self.h
+        return self.w - 2 * self.border, self.h - 2 * self.border
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
         Brick.destroy(self)
@@ -109,11 +110,24 @@ def main():
         Boundary((-boundary_width, world_h), (world_w + 2 * boundary_width, boundary_width)),
         Boundary((-boundary_width, -boundary_width), (boundary_width, world_h + 2 * boundary_width)),
     )
-    bricks = (
-        Brick(rand_point(500, 500), rand_point(100, 100))
-        for _ in range(20)
-    )
-    ball = Ball((200, 200), 15)
+    bricks = []
+    y = 0
+    for i in range(5):
+        min_h, max_h = 40, 70
+        min_w = 40
+        min_n, max_n = 4, 6
+        n = randint(min_n, max_n)
+        extra = world_w - min_w * n
+        extras = [0] + sorted(sample(range(1, extra), n - 1)) + [extra]
+        x = 0
+        h = randint(min_h, max_h)
+        for j in range(n):
+            w = min_w + extras[j + 1] - extras[j]
+            bricks.append(Brick((x, y), (w, h)))
+            x += w
+        y += h
+
+    ball = Ball((world_w // 2, world_h - 50), 15)
     for b in boundaries:
         pe.link_node(b)
     for b in bricks:
@@ -122,15 +136,11 @@ def main():
     re.link_node(ball)
     pe.link_node(ball)
     run = True
-    pe.apply_boost(ball, (-5, 10))
+    pe.apply_boost(ball, (-5, 7))
     while run:
         pe.tick()
         cv2.imshow("win", re.tick())
         run = (cv2.waitKey(10) != ord("q"))
-
-
-def rand_point(w, h):
-    return randint(20, w), randint(20, h)
 
 
 if __name__ == '__main__':
