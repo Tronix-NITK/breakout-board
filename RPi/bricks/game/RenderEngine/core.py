@@ -37,11 +37,11 @@ class SolidRect(RenderEngineNode):
             return SolidRect()
 
         @abc.abstractmethod
-        def get_xy(self):
+        def get_corner(self):
             pass
 
         @abc.abstractmethod
-        def get_wh(self):
+        def get_shape(self):
             pass
 
     def __init__(self):
@@ -55,11 +55,11 @@ class Rect(RenderEngineNode):
             return Rect()
 
         @abc.abstractmethod
-        def get_xy(self):
+        def get_corner(self):
             pass
 
         @abc.abstractmethod
-        def get_wh(self):
+        def get_shape(self):
             pass
 
     def __init__(self):
@@ -84,14 +84,14 @@ class RenderEngine:
     def _render(self):
         for node in self.nodes:
             if isinstance(node, SolidRect):
-                x, y = node.logic_node.get_xy()
-                w, h = node.logic_node.get_wh()
+                x, y = node.logic_node.get_corner()
+                w, h = node.logic_node.get_shape()
                 pt1 = self._translate_point((x, y))
                 pt2 = self._translate_point((x + w, y + h))
                 cv2.rectangle(self.frame, pt1, pt2, 1, cv2.FILLED)
             elif isinstance(node, Rect):
-                x, y = node.logic_node.get_xy()
-                w, h = node.logic_node.get_wh()
+                x, y = node.logic_node.get_corner()
+                w, h = node.logic_node.get_shape()
                 pt1 = self._translate_point((x, y))
                 pt2 = self._translate_point((x + w, y + h))
                 cv2.rectangle(self.frame, pt1, pt2, 1)

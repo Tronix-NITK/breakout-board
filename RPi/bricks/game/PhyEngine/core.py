@@ -35,29 +35,12 @@ class PhyEngineNode(abc.ABC):
         self.pe_id = None
         self.logic_node: Optional[PhyEngineNode.LogicNode] = None
 
-    @staticmethod
-    @abc.abstractmethod
-    def is_static() -> bool:
-        pass
-
 
 class StaticNode(PhyEngineNode):
     class LogicNode(PhyEngineNode.LogicNode, abc.ABC):
         @staticmethod
         def factory_pe_node():
             return StaticNode()
-
-        @abc.abstractmethod
-        def get_xy(self):
-            pass
-
-        @abc.abstractmethod
-        def get_wh(self):
-            pass
-
-    @staticmethod
-    def is_static():
-        return True
 
 
 class DynamicNode(PhyEngineNode):
@@ -67,20 +50,8 @@ class DynamicNode(PhyEngineNode):
             return DynamicNode()
 
         @abc.abstractmethod
-        def get_xy(self):
-            pass
-
-        @abc.abstractmethod
-        def get_wh(self):
-            pass
-
-        @abc.abstractmethod
         def on_move(self, xy: Tuple[int, int]):
             pass
-
-    @staticmethod
-    def is_static():
-        return False
 
     def __init__(self):
         super().__init__()
@@ -88,10 +59,10 @@ class DynamicNode(PhyEngineNode):
         self.pe_px, self.pe_py = self.pe_x, self.pe_y = 0, 0
 
     def on_link(self):
-        self.pe_px, self.pe_py = self.pe_x, self.pe_y = self.logic_node.get_xy()
+        self.pe_px, self.pe_py = self.pe_x, self.pe_y = self.logic_node.get_hitbox()[:2]
 
     def sync(self):
-        if (self.pe_x, self.pe_y) != self.logic_node.get_xy():
+        if (self.pe_x, self.pe_y) != self.logic_node.get_hitbox()[:2]:
             self.logic_node.on_move((self.pe_x, self.pe_y))
 
 

@@ -44,10 +44,10 @@ class Brick(Re.Rect.LogicNode, Pe.StaticNode.LogicNode):
     def get_hitbox(self):
         return self.x, self.y, self.w, self.h
 
-    def get_xy(self):
+    def get_corner(self):
         return self.x, self.y
 
-    def get_wh(self):
+    def get_shape(self):
         return self.w, self.h
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
@@ -63,10 +63,10 @@ class Ball(Re.SolidRect.LogicNode, Pe.DynamicNode.LogicNode):
     def get_hitbox(self):
         return self.x, self.y, self.w, self.h
 
-    def get_xy(self):
+    def get_corner(self):
         return self.x, self.y
 
-    def get_wh(self):
+    def get_shape(self):
         return self.w, self.h
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
