@@ -22,10 +22,13 @@ class Display:
         self.port = None
         self._col_len = 1
         self._val_len = ceil(resolution[1] / 8)
+        self._win_name = name
 
     def start(self):
         self._master, slave = pty.openpty()
         self.port = os.ttyname(slave)
+        self._win_name = self.name + " " + self.port
+        # cv2.namedWindow(self.name, cv2.WINDOW_GUI_NORMAL)
         self._run_flag = True
         self._thread = Thread(target=self._run)
         self._thread.start()
@@ -49,6 +52,8 @@ class Display:
             val = int.from_bytes(data[self._col_len:], byteorder='big')
             frame[:, col] = _bin_array(val, h)
             if col == w - 1:
-                cv2.imshow(self.name, cv2.resize(frame, (0, 0), fx=self.scale, fy=self.scale))
+                cv2.imshow(self._win_name, cv2.resize(
+                    frame, (0, 0), fx=self.scale, fy=self.scale, interpolation=cv2.INTER_NEAREST
+                ))
                 cv2.waitKey(1)
             os.write(self._master, b"\0")
