@@ -29,6 +29,10 @@ class RenderEngineNode(abc.ABC):
         self.re_id = None
         self.logic_node: Optional[RenderEngineNode.LogicNode] = None
 
+    @abc.abstractmethod
+    def render(self, frame):
+        pass
+
 
 class SolidRect(RenderEngineNode):
     class LogicNode(RenderEngineNode.LogicNode, abc.ABC):
@@ -46,6 +50,12 @@ class SolidRect(RenderEngineNode):
 
     def __init__(self):
         super().__init__()
+
+    def render(self, frame):
+        x, y = self.logic_node.get_corner()
+        w, h = self.logic_node.get_shape()
+        cv2.rectangle(frame, (x, y), (x + w, y + h), 1, cv2.FILLED)
+        return frame
 
 
 class Rect(RenderEngineNode):
@@ -65,13 +75,18 @@ class Rect(RenderEngineNode):
     def __init__(self):
         super().__init__()
 
+    def render(self, frame):
+        x, y = self.logic_node.get_corner()
+        w, h = self.logic_node.get_shape()
+        cv2.rectangle(frame, (x, y), (x + w, y + h), 1)
+        return frame
+
 
 class RenderEngine:
-    def __init__(self, world_wh, frame_wh):
+    def __init__(self, world_wh):
         self.id_store = IDStore()
         self.world_w, self.world_h = world_wh
-        self.frame_w, self.frame_h = frame_wh
-        self.frame = np.zeros(frame_wh)
+        self.frame = np.zeros(world_wh)
         self.nodes: List[RenderEngineNode] = []
 
     def link_node(self, logic_node: RenderEngineNode.LogicNode):
@@ -83,24 +98,9 @@ class RenderEngine:
 
     def _render(self):
         for node in self.nodes:
-            if isinstance(node, SolidRect):
-                x, y = node.logic_node.get_corner()
-                w, h = node.logic_node.get_shape()
-                pt1 = self._translate_point((x, y))
-                pt2 = self._translate_point((x + w, y + h))
-                cv2.rectangle(self.frame, pt1, pt2, 1, cv2.FILLED)
-            elif isinstance(node, Rect):
-                x, y = node.logic_node.get_corner()
-                w, h = node.logic_node.get_shape()
-                pt1 = self._translate_point((x, y))
-                pt2 = self._translate_point((x + w, y + h))
-                cv2.rectangle(self.frame, pt1, pt2, 1)
+            node.render(self.frame)
 
     def tick(self) -> np.array:
         self.frame.fill(0)
         self._render()
         return self.frame
-
-    def _translate_point(self, pt):
-        x, y = pt
-        return int(x * self.frame_w / self.world_w), int(y * self.frame_h / self.world_h)
