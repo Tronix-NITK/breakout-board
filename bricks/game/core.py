@@ -2,9 +2,9 @@ import numpy as np
 from typing import Tuple
 from random import randint, sample
 
-from RPi.bricks.game.PhyEngine import PhyEngineNode
-import RPi.bricks.game.RenderEngine as Re
-import RPi.bricks.game.PhyEngine as Pe
+from bricks.game.PhyEngine import PhyEngineNode
+import bricks.game.RenderEngine as Re
+import bricks.game.PhyEngine as Pe
 
 
 class Game:
@@ -40,7 +40,7 @@ class Game:
         )
         bricks = []
         y = 0
-        for i in range(1):
+        for i in range(5):
             min_h, max_h = int(.05 * self.world_h), int(.1 * self.world_h)
             min_w = int(.1 * self.world_w)
             min_n, max_n = 4, 6
@@ -51,11 +51,11 @@ class Game:
             h = randint(min_h, max_h)
             for j in range(n):
                 w = min_w + extras[j + 1] - extras[j]
-                bricks.append(Brick((x, y), (w, h)))
+                bricks.append(Brick((x, y), (w, h), 100 * w // self.world_w))
                 x += w
             y += h
 
-        ball = Ball((self.world_w // 2, self.world_h - self.world_h//8), self.world_w//20)
+        ball = Ball((self.world_w * 50 // 100, self.world_h * 70 // 100), self.world_w * 3 // 100)
         for b in boundaries:
             self.pe.link_node(b)
         for b in bricks:
@@ -63,7 +63,7 @@ class Game:
             self.pe.link_node(b)
         self.re.link_node(ball)
         self.pe.link_node(ball)
-        self.pe.apply_boost(ball, (-5, 7))
+        self.pe.apply_boost(ball, (-8, -10))
         self.ball = ball
 
     def tick(self):
@@ -98,10 +98,11 @@ class Brick(Re.SolidRect.LogicNode, Pe.StaticNode.LogicNode):
     destroy = None
     border = 2
 
-    def __init__(self, xy, wh):
+    def __init__(self, xy, wh, worth):
         super().__init__()
         self.x, self.y = xy
         self.w, self.h = wh
+        self.worth = worth
 
     def get_hitbox(self):
         return self.x, self.y, self.w, self.h
@@ -121,6 +122,7 @@ class Ball(Re.SolidCircle.LogicNode, Pe.DynamicNode.LogicNode):
         super().__init__()
         self.x, self.y = xy
         self.r = r
+        self.score = 0
 
     def get_hitbox(self):
         return self.x - self.r, self.y - self.r, 2 * self.r, 2 * self.r
@@ -132,7 +134,9 @@ class Ball(Re.SolidCircle.LogicNode, Pe.DynamicNode.LogicNode):
         return self.r
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
-        pass
+        if isinstance(node, Brick):
+            self.score += node.worth
+            print("Score", self.score)
 
     def on_move(self, dxy: Tuple[int, int]):
         self.x, self.y = self.x + dxy[0], self.y + dxy[1]

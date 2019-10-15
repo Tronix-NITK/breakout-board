@@ -1,5 +1,4 @@
-from ..display_driver.arduino import Driver
-from ..emulator import Display
+from ..display_driver.rpi import Driver
 from ..game import Game
 import numpy as np
 from time import sleep
@@ -11,9 +10,7 @@ def main():
 
 
 def main1():
-    display_emu = Display("emu1", (6, 14), scale=50)
-    display_emu.start()
-    driver = Driver((6, 14), display_emu.port, 9600)
+    driver = Driver((6, 14), (17, 27, 22))
     driver.start()
     frame = np.array([
         [1, 0, 1, 0, 1, 0],
@@ -34,21 +31,17 @@ def main1():
     try:
         while True:
             driver.push_frame(frame)
-            sleep(.1)
     except KeyboardInterrupt:
         print("Bye")
     finally:
         driver.stop()
-        display_emu.stop()
 
 
 def main2():
-    render_wh = 200, 200
-    down_sample_multi = 0.5
+    render_wh = 6*50, 14*50
+    down_sample_multi = 1/50
     frame_wh = int(render_wh[0] * down_sample_multi), int(render_wh[1] * down_sample_multi)
-    display_emu = Display("emu1", frame_wh, scale=int(1 / down_sample_multi))
-    display_emu.start()
-    driver = Driver(frame_wh, display_emu.port, 9600)
+    driver = Driver(frame_wh, (17, 27, 22))
     driver.start()
 
     def pusher(frame):
@@ -57,7 +50,6 @@ def main2():
 
     game = Game(render_wh)
     game.push_frame = pusher
-    # game.push_frame = cv2_emulator_pusher
     game.start()
     try:
         while True:
@@ -68,11 +60,3 @@ def main2():
     finally:
         game.stop()
         driver.stop()
-        display_emu.stop()
-
-
-def cv2_emulator_pusher(frame):
-    frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5, interpolation=cv2.INTER_NEAREST)
-    frame = cv2.resize(frame, (0, 0), fx=2, fy=2, interpolation=cv2.INTER_NEAREST)
-    cv2.imshow("cv2 emulator", frame)
-    cv2.waitKey(10)
