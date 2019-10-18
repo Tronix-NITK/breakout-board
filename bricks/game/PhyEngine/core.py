@@ -104,14 +104,14 @@ class PhyEngine:
                     mx, my = 1, 1
                     if hit_comp[1] or hit_comp[3]:
                         mx = -1
-                    elif hit_comp[0] or hit_comp[2]:
+                    if hit_comp[0] or hit_comp[2]:
                         my = -1
                     node.pe_x -= node.vx
                     node.pe_y -= node.vy
                     node.vx = mx * node.vx
                     node.vy = my * node.vy
-                    node.pe_x += node.vx
-                    node.pe_y += node.vy
+                    # node.pe_x += node.vx
+                    # node.pe_y += node.vy
                 node.sync()
 
     def apply_boost(self, logic_node: DynamicNode.LogicNode, v: Tuple[int, int]):
@@ -155,6 +155,7 @@ class PhyEngine:
             else:
                 continue
             s_node.logic_node.on_hit(d_node.logic_node)
+            d_node.logic_node.on_hit(s_node.logic_node)
         return tuple(impact)
 
 
