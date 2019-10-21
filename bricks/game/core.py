@@ -1,6 +1,8 @@
 import numpy as np
 from typing import Tuple
 from random import randint, sample
+from pygame import mixer
+import pygame
 
 from bricks.game.PhyEngine import PhyEngineNode
 import bricks.game.RenderEngine as Re
@@ -13,24 +15,29 @@ class Game:
         self.world_h, self.world_w = world_shape
         self.frame = np.zeros(self.world_shape)
         self.collision_matrix = np.zeros(self.world_shape)
-
+        mixer.init()
         self.stop_called = False
 
-        self.bat_pos = self.world_w // 2
+        self.bat = None
         self.re, self.pe = None, None
 
         self.ball = None
         self.push_frame = None
+        self.score = 0
+        self.tick_count = 0
 
     def start(self):
         self.re = Re.RenderEngine((self.world_w, self.world_h))
         self.pe = Pe.PhyEngine()
 
-        def destroy(o):
-            self.re.unlink_node(o)
-            self.pe.unlink_node(o)
+        def destroy_brick(broken_brick):
+            self.score += broken_brick.worth
+            # print("Score", self.score)
+            self.re.unlink_node(broken_brick)
+            self.pe.unlink_node(broken_brick)
 
-        Brick.destroy = destroy
+        Brick.destroy = destroy_brick
+
         boundary_width = 10
         boundaries = (
             Boundary((-boundary_width, -boundary_width), (self.world_w + 2 * boundary_width, boundary_width)),
@@ -38,6 +45,14 @@ class Game:
             Boundary((-boundary_width, self.world_h), (self.world_w + 2 * boundary_width, boundary_width)),
             Boundary((-boundary_width, -boundary_width), (boundary_width, self.world_h + 2 * boundary_width)),
         )
+
+        def boundary_hit(boundary, _):
+            if boundary is boundaries[2]:
+                # print("Game over")
+                pass
+
+        Boundary.hit = boundary_hit
+
         bricks = []
         y = 0
         for i in range(5):
@@ -55,26 +70,34 @@ class Game:
                 x += w
             y += h
 
-        ball = Ball((self.world_w * 50 // 100, self.world_h * 70 // 100), self.world_w * 3 // 100)
+        self.ball = Ball((self.world_w * 50 // 100, self.world_h * 70 // 100),
+                         (self.world_w * 5 // 100, self.world_w * 5 // 100))
+        self.bat = Bat((self.world_w * 40 // 100, self.world_h * 95 // 100),
+                       (self.world_w * 20 // 100, self.world_h * 4 // 100))
         for b in boundaries:
             self.pe.link_node(b)
         for b in bricks:
             self.re.link_node(b)
             self.pe.link_node(b)
-        self.re.link_node(ball)
-        self.pe.link_node(ball)
-        self.pe.apply_boost(ball, (-8, -10))
-        self.ball = ball
+        self.re.link_node(self.ball)
+        self.pe.link_node(self.ball)
+        self.re.link_node(self.bat)
+        self.pe.link_node(self.bat)
+        self.pe.apply_boost(self.ball, (-0, 10))
 
     def tick(self):
+        self.tick_count += 1
+        self.tick_count %= 1000
+        if self.tick_count == 0:
+            print("Add row")
         self.pe.tick()
         self.push_frame(self.re.tick())
 
-    def input_cmd(self, cmd):
-        pass
+    def input_nudge_left(self):
+        self.pe.apply_boost(self.bat, (-10, 0))
 
-    def input_move_to(self, pos):
-        self.bat_pos = pos * self.world_w
+    def input_nudge_right(self):
+        self.pe.apply_boost(self.bat, (10, 0))
 
     def stop(self):
         self.stop_called = True
@@ -82,6 +105,8 @@ class Game:
 
 
 class Boundary(Pe.StaticNode.LogicNode):
+    hit = None
+
     def __init__(self, xy, wh):
         super().__init__()
         self.x, self.y = xy
@@ -91,7 +116,7 @@ class Boundary(Pe.StaticNode.LogicNode):
         return self.x, self.y, self.w, self.h
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
-        pass
+        Boundary.hit(self, node)
 
 
 class Brick(Re.SolidRect.LogicNode, Pe.StaticNode.LogicNode):
@@ -115,28 +140,49 @@ class Brick(Re.SolidRect.LogicNode, Pe.StaticNode.LogicNode):
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
         Brick.destroy(self)
+        mixer.music.load("/home/srinskit/Projects/Matrix/bricks/game/sounds/brick_explode.wav")
+        mixer.music.play()
 
 
-class Ball(Re.SolidCircle.LogicNode, Pe.DynamicNode.LogicNode):
-    def __init__(self, xy, r):
+class Ball(Re.SolidRect.LogicNode, Pe.DynamicNode.LogicNode):
+    def __init__(self, xy, wh):
         super().__init__()
         self.x, self.y = xy
-        self.r = r
-        self.score = 0
+        self.w, self.h = wh
 
     def get_hitbox(self):
-        return self.x - self.r, self.y - self.r, 2 * self.r, 2 * self.r
+        return self.x, self.y, self.w, self.h
 
-    def get_center(self):
+    def get_corner(self):
         return self.x, self.y
 
-    def get_radius(self):
-        return self.r
+    def get_shape(self):
+        return self.w, self.h
 
     def on_hit(self, node: PhyEngineNode.LogicNode):
-        if isinstance(node, Brick):
-            self.score += node.worth
-            print("Score", self.score)
+        pass
 
     def on_move(self, dxy: Tuple[int, int]):
         self.x, self.y = self.x + dxy[0], self.y + dxy[1]
+
+
+class Bat(Re.Rect.LogicNode, Pe.DynamicNode.LogicNode):
+    def __init__(self, xy, wh):
+        super().__init__()
+        self.x, self.y = xy
+        self.w, self.h = wh
+
+    def get_corner(self):
+        return self.x, self.y
+
+    def get_shape(self):
+        return self.w, self.h
+
+    def on_move(self, dxy: Tuple[int, int]):
+        self.x, self.y = self.x + dxy[0], self.y + dxy[1]
+
+    def get_hitbox(self):
+        return self.x, self.y, self.w, self.h
+
+    def on_hit(self, node: PhyEngineNode.LogicNode):
+        pass
