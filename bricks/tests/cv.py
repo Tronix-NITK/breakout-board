@@ -1,5 +1,6 @@
 from ..display_driver.cv import Driver
 from ..game import Game
+from ..input_driver.cv import get_command
 import numpy as np
 from time import sleep
 import cv2
@@ -39,8 +40,8 @@ def main1():
 
 
 def main2():
-    render_wh = 6*50, 14*50
-    down_sample_multi = 1/50
+    render_wh = 500, 500
+    down_sample_multi = 1
     driver = Driver()
     driver.start()
 
@@ -54,7 +55,11 @@ def main2():
     try:
         while True:
             game.tick()
-            sleep(0.01)
+            cmd = get_command()
+            if cmd == "a":
+                game.input_nudge_left()
+            elif cmd == "d":
+                game.input_nudge_right()
     except KeyboardInterrupt:
         print("Bye")
     finally:
