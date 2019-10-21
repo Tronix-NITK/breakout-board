@@ -1,6 +1,7 @@
 from __future__ import annotations
 import abc
 from typing import List, Optional, Tuple, Dict
+from itertools import chain
 
 
 class IDStore:
@@ -110,8 +111,6 @@ class PhyEngine:
                     node.pe_y -= node.vy
                     node.vx = mx * node.vx
                     node.vy = my * node.vy
-                    # node.pe_x += node.vx
-                    # node.pe_y += node.vy
                 node.sync()
 
     def apply_boost(self, logic_node: DynamicNode.LogicNode, v: Tuple[int, int]):
@@ -131,7 +130,7 @@ class PhyEngine:
             LineSegment((x, y + h), (px, py + h)),
         ]
         impact = [0, 0, 0, 0]
-        for s_node in self.static_nodes:
+        for s_node in chain(self.static_nodes, self.dynamic_nodes):
             hit, td, ts = _rect_overlapping(d_node_hb, s_node.logic_node.get_hitbox())
             if not hit:
                 continue
