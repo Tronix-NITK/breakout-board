@@ -1,5 +1,5 @@
 opencv_contrib_python==4.1.0.25
-numpy==1.17.2
+numpy==1.22.0
 fake_rpi==0.6.1
 pyserial==3.4
 typing==3.7.4.1
